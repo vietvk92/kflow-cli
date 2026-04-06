@@ -2,11 +2,12 @@
 
 KFlow is a workflow enforcement CLI for local software delivery inside a repository.
 
-Current internal milestone: `0.1.0`
+Current internal milestone: `0.1.1`
 
 ## Current Scope
 - initialize `.kflow/` project state
 - detect environment capabilities
+- **ingest spec files and auto-bootstrap tasks** (`kflow intake`)
 - create managed tasks and task artifacts
 - evaluate task readiness and closeout blockers
 - run configured build, test, and mobile verification commands
@@ -35,16 +36,16 @@ brew install python@3.11
 python3.11 --version
 ```
 
-Install from the public `v0.1.0` tag:
+Install from the public `v0.1.1` tag:
 
 ```bash
-python3.11 -m pip install "git+https://github.com/vietvk92/kflow-cli.git@v0.1.0"
+python3.11 -m pip install "git+https://github.com/vietvk92/kflow-cli.git@v0.1.1"
 ```
 
 If `python3` on your machine already points to Python 3.10+:
 
 ```bash
-python3 -m pip install "git+https://github.com/vietvk92/kflow-cli.git@v0.1.0"
+python3 -m pip install "git+https://github.com/vietvk92/kflow-cli.git@v0.1.1"
 ```
 
 Install from source:
@@ -92,6 +93,15 @@ kflow analyze
 kflow plan --apply
 ```
 
+### Start from specs (recommended)
+If you have spec or PRD files, drop them into `specs/` and let kflow bootstrap the tasks for you:
+
+```bash
+# Drop your .md or .txt spec files into specs/, then:
+kflow intake            # preview what will be created
+kflow intake --apply    # create tasks with pre-filled TASK_BRIEF.md
+```
+
 This creates `.kflow/` in the current repo and detects available workflow/config/tooling state.
 
 Common files created under the repo:
@@ -103,7 +113,16 @@ Common files created under the repo:
 - `.kflow/tasks/<task-id>/RESULT.md`
 
 ## Quick Start
-Create and inspect a task:
+Start from a spec file (fastest path):
+
+```bash
+# Drop specs/my-feature.md into your repo, then:
+kflow intake --apply
+kflow task status
+kflow task doctor
+```
+
+Or create a task manually:
 
 ```bash
 kflow task new --type bug --name "Permission flow"
@@ -134,7 +153,15 @@ kflow plan
 kflow plan --apply
 ```
 
-### 2. Create a task
+### 2. Ingest specs and bootstrap tasks
+```bash
+# Drop .md or .txt files into specs/, then:
+kflow intake            # dry-run preview
+kflow intake --apply    # create tasks
+kflow intake --apply --force  # re-ingest updated specs
+```
+
+### 3. Create a task manually
 ```bash
 kflow task new --type bug --name "Fix permission regression" --risk high --tags permissions
 ```
@@ -189,6 +216,7 @@ kflow artifacts scaffold-ci
 ## Core Commands
 - `kflow init`
 - `kflow analyze`
+- `kflow intake`
 - `kflow plan`
 - `kflow env detect`
 - `kflow config show`
@@ -217,6 +245,7 @@ kflow artifacts scaffold-ci
 ## Command Guide
 - `kflow init`: bootstrap `.kflow/` in the current repo
 - `kflow analyze`: analyze repository to identify planning modes, artifacts, and product specs
+- `kflow intake`: scan `specs/` for spec files and auto-create tasks with pre-filled `TASK_BRIEF.md` (`--apply` creates tasks, `--force` re-ingests)
 - `kflow plan`: preview the proposed mapping and bootstrapper state from existing docs (`--apply` persists states)
 - `kflow env detect`: inspect repo, workflow, and adapter/tool availability
 - `kflow task new`: create a managed task with markdown artifacts
@@ -235,7 +264,7 @@ kflow artifacts scaffold-ci
 Your interpreter is too old. Use Python 3.10+ explicitly:
 
 ```bash
-python3.11 -m pip install "git+https://github.com/vietvk92/kflow-cli.git@v0.1.0"
+python3.11 -m pip install "git+https://github.com/vietvk92/kflow-cli.git@v0.1.1"
 ```
 
 ### `kflow: command not found`

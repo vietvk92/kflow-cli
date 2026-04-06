@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.1
+- Added `kflow intake` command for spec-driven task bootstrapping.
+  - Drop `.md` or `.txt` spec files into `specs/` (configurable via `paths.intake_dir`), run `kflow intake --apply` to auto-create tasks.
+  - Extracts task name from `# H1` heading, infers task type and risk level from content keywords.
+  - Pre-fills `TASK_BRIEF.md` with spec content — no manual copy-paste required.
+  - Tracks processed specs by file hash; use `--force` to re-ingest updated specs.
+- Added `intake_dir` path config (default: `specs`) to `PathsConfig`.
+- Expanded `.gitignore` with standard Python patterns (`__pycache__`, `*.pyc`, `.venv`, `dist/`, etc.).
+
 ## 0.1.0
 - Bootstrapped the KFlow Python CLI foundation and package layout.
 - Added init, env, config, task, doctor, inspect, artifacts, sprint, and phase command groups.
