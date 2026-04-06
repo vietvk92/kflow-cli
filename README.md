@@ -107,6 +107,8 @@ This creates `.kflow/` in the current repo and detects available workflow/config
 Common files created under the repo:
 - `.kflow/config.yaml`
 - `.kflow/state/current_task.yaml`
+- `.kflow/state/current_sprint.yaml`
+- `.kflow/state/sprints.yaml`
 - `.kflow/tasks/<task-id>/TASK_BRIEF.md`
 - `.kflow/tasks/<task-id>/CHANGE_PLAN.md`
 - `.kflow/tasks/<task-id>/VERIFY_CHECKLIST.md`
@@ -203,7 +205,9 @@ kflow task doctor --json
 
 ### 7. Work with planning and sprint state
 ```bash
-kflow sprint status
+kflow sprint start "Sprint 2"   # start sprint, writes current_sprint.yaml
+kflow sprint status              # show active sprint, completed sprints, phase/task summary
+kflow sprint close               # mark active sprint done, archive to sprints.yaml
 kflow phase check 2
 kflow doctor sprint
 ```
@@ -240,6 +244,7 @@ kflow artifacts scaffold-ci
 - `kflow artifacts scaffold-ci`
 - `kflow sprint status`
 - `kflow sprint start`
+- `kflow sprint close`
 - `kflow phase check`
 
 ## Command Guide
@@ -254,6 +259,9 @@ kflow artifacts scaffold-ci
 - `kflow build` / `kflow test` / `kflow verify mobile`: run configured execution steps and capture evidence
 - `kflow inspect`: pull GitNexus context/impact into task artifacts and `CHANGE_PLAN.md`
 - `kflow artifacts collect`: snapshot CI/debug artifacts for the current task
+- `kflow sprint start <name>`: set active sprint and write `.kflow/state/current_sprint.yaml`
+- `kflow sprint status`: show active sprint name, completed sprints, phase readiness, and task totals
+- `kflow sprint close`: mark the active sprint completed and archive it to `.kflow/state/sprints.yaml`
 - `kflow doctor repo`: repo-wide health view
 - `kflow doctor sprint`: sprint-wide readiness and linked-task execution health
 - `kflow doctor ci`: CI-friendly doctor command with non-zero exit on blocked state
@@ -380,4 +388,7 @@ Doctor/report payloads use the same additive pattern, but with doctor-specific s
 - `kflow task doctor --json` now includes `data.stop_conditions` so automation can distinguish explicit stop-condition hits from broader policy warnings.
 - Managed task files live under `.kflow/tasks/<task-id>/`.
 - Internal milestone summary is tracked in `CHANGELOG.md`.
-- Current practical release baseline is `0.1.0` with `82 passed` across unit and integration tests.
+- `kflow sprint start` now writes `.kflow/state/current_sprint.yaml` with `id`, `name`, `status: active`, and `started_at`. This happens even when no `.tools/start-sprint.sh` script is present.
+- `kflow sprint close` marks the active sprint as completed, appends it to `.kflow/state/sprints.yaml`, and removes `current_sprint.yaml`.
+- `kflow sprint status` now reads sprint state files and reports the active sprint name and completed sprint history at the top of its output, in addition to the existing phase/task summary.
+- Current practical release baseline is `0.1.0` with `91 passed` across unit and integration tests.

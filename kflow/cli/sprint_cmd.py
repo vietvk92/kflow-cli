@@ -28,3 +28,11 @@ def start(
 ) -> None:
     """Start a sprint using the repo-local automation script when available."""
     run_command(lambda: SprintService(Path.cwd()).start(sprint_name), json_output=json_output)
+
+
+@app.command("close")
+def close(
+    json_output: bool = typer.Option(False, "--json", help="Emit JSON output."),
+) -> None:
+    """Mark the active sprint as completed and archive it."""
+    run_command(lambda: SprintService(Path.cwd()).close(), json_output=json_output)

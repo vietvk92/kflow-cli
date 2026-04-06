@@ -4,10 +4,13 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+import re
 import shutil
+from typing import Any
 
 from kflow.config.loader import load_config
 from kflow.models.results import Message, OperationResult
+from kflow.models.sprint import SprintHistoryEntry, SprintRecord
 from kflow.policy.evaluator import evaluate_sprint_policy
 from kflow.policy.loader import load_policy
 from kflow.services.phase_service import _meaningful_markdown_text, _parse_checklist_summary
@@ -15,6 +18,8 @@ from kflow.services.planning_service import discover_phase_records, inspect_phas
 from kflow.services.task_service import TaskService
 from kflow.utils.files import ensure_directory, write_text
 from kflow.utils.shell import run
+from kflow.utils.time import utc_now_iso
+from kflow.utils.yaml_io import dump_yaml, load_yaml
 
 
 class SprintService:
@@ -26,14 +31,73 @@ class SprintService:
         self.repo_root = self.config.repo_root_path
         self.planning_dir = self.repo_root / self.config.paths.planning_dir
         self.logs_dir = self.repo_root / ".kflow" / "logs"
+        self.state_dir = self.repo_root / ".kflow" / "state"
+        self.current_sprint_path = self.state_dir / "current_sprint.yaml"
+        self.sprints_history_path = self.state_dir / "sprints.yaml"
         self.loaded_policy = load_policy(cwd)
         self.task_service = TaskService(cwd)
+
+    # ------------------------------------------------------------------
+    # Sprint state helpers
+    # ------------------------------------------------------------------
+
+    def _load_current_sprint(self) -> SprintRecord | None:
+        """Load current_sprint.yaml if it exists and sprint is active."""
+        if not self.current_sprint_path.exists():
+            return None
+        try:
+            data = load_yaml(self.current_sprint_path)
+            record = SprintRecord(**data)
+            return record if record.status == "active" else None
+        except Exception:
+            return None
+
+    def _write_current_sprint(self, record: SprintRecord) -> None:
+        ensure_directory(self.state_dir)
+        write_text(self.current_sprint_path, dump_yaml(record.model_dump()), overwrite=True)
+
+    def _load_sprint_history(self) -> list[SprintHistoryEntry]:
+        if not self.sprints_history_path.exists():
+            return []
+        try:
+            raw = load_yaml(self.sprints_history_path)
+            entries = raw.get("sprints", []) if isinstance(raw, dict) else raw
+            if not isinstance(entries, list):
+                return []
+            return [SprintHistoryEntry(**e) for e in entries]
+        except Exception:
+            return []
+
+    def _append_sprint_history(self, entry: SprintHistoryEntry) -> None:
+        history = self._load_sprint_history()
+        history.append(entry)
+        ensure_directory(self.state_dir)
+        payload = {"sprints": [e.model_dump() for e in history]}
+        write_text(self.sprints_history_path, dump_yaml(payload), overwrite=True)
+
+    @staticmethod
+    def _sprint_id(name: str) -> str:
+        """Convert a human name like 'Sprint 2' to 'sprint-2'."""
+        return re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")
 
     def status(self) -> OperationResult:
         """Return sprint-related status in normal or degraded mode."""
         messages: list[Message] = [Message(severity="info", text="Sprint Status")]
         warnings: list[str] = []
         summary_path = self.repo_root / ".kflow" / "artifacts" / "sprint-summary.json"
+
+        # Sprint state section
+        current_sprint = self._load_current_sprint()
+        sprint_history = self._load_sprint_history()
+        if current_sprint:
+            messages.append(Message(severity="info", text=f"Active sprint: {current_sprint.name}"))
+        else:
+            messages.append(Message(severity="warning", text="No active sprint. Run `kflow sprint start <name>` to begin one."))
+        if sprint_history:
+            completed_names = ", ".join(e.name for e in sprint_history if e.status == "completed")
+            if completed_names:
+                messages.append(Message(severity="info", text=f"Completed sprints: {completed_names}"))
+
 
         if not self.planning_dir.exists():
             warnings.append("Planning directory missing. Sprint status is running in degraded mode.")
@@ -113,7 +177,7 @@ class SprintService:
             messages.append(Message(severity="warning", text=warnings[0]))
 
         ensure_directory(summary_path.parent)
-        summary_payload = {
+        summary_payload: dict[str, Any] = {
             "planning_dir": str(self.planning_dir),
             "current_phase": current_phase,
             "ready_phases": ready_count,
@@ -123,6 +187,8 @@ class SprintService:
             "evidence_totals": sprint_evidence_totals,
             "phases": phase_entries,
             "warnings": warnings,
+            "active_sprint": current_sprint.model_dump() if current_sprint else None,
+            "completed_sprints": [e.model_dump() for e in sprint_history if e.status == "completed"],
         }
         write_text(summary_path, json.dumps(summary_payload, indent=2) + "\n", overwrite=True)
 
@@ -142,6 +208,8 @@ class SprintService:
                     "task_totals": {"total": sprint_task_total, "open": sprint_open_task_total},
                     "evidence_totals": sprint_evidence_totals,
                 },
+                "active_sprint": current_sprint.model_dump() if current_sprint else None,
+                "completed_sprints": [e.model_dump() for e in sprint_history if e.status == "completed"],
                 "planning_dir": str(self.planning_dir),
                 "warnings": warnings,
                 "phases": phase_entries,
@@ -243,14 +311,27 @@ class SprintService:
         """Start a sprint via repo-local script when available."""
         script = self.repo_root / ".tools" / "start-sprint.sh"
         if not script.exists():
+            sprint_record = SprintRecord(
+                id=self._sprint_id(sprint_name),
+                name=sprint_name,
+                status="active",
+                started_at=utc_now_iso(),
+            )
+            self._write_current_sprint(sprint_record)
             return OperationResult(
                 command="sprint start",
                 status="warning",
                 messages=[
+                    Message(severity="info", text=f"Active sprint set: {sprint_name}"),
                     Message(severity="warning", text="Sprint start script not found."),
                     Message(severity="info", text="Add `./.tools/start-sprint.sh` to enable sprint bootstrap automation."),
                 ],
-                data={"sprint_name": sprint_name, "script": str(script), "started": False},
+                data={
+                    "sprint_name": sprint_name,
+                    "script": str(script),
+                    "started": False,
+                    "active_sprint": sprint_record.model_dump(),
+                },
             )
 
         phase_records_before = discover_phase_records(self.planning_dir)
@@ -306,8 +387,20 @@ class SprintService:
 
         write_text(log_path, "\n".join(log_sections), overwrite=True)
 
+        sprint_record: SprintRecord | None = None
+        if result.ok:
+            sprint_record = SprintRecord(
+                id=self._sprint_id(sprint_name),
+                name=sprint_name,
+                status="active",
+                started_at=utc_now_iso(),
+            )
+            self._write_current_sprint(sprint_record)
+
         warnings: list[str] = []
         messages = [Message(severity="pass" if result.ok else "blocked", text=f"Sprint start {'succeeded' if result.ok else 'failed'}")]
+        if sprint_record:
+            messages.append(Message(severity="info", text=f"Active sprint set: {sprint_record.name}"))
         if result.ok and outputs_verified:
             messages.append(Message(severity="pass", text=f"Planning outputs verified in {self.planning_dir}"))
         elif result.ok:
@@ -354,12 +447,51 @@ class SprintService:
                 "phases_after": [str(item["phase"]) for item in phase_records_after],
                 "outputs_verified": outputs_verified,
                 "warnings": warnings,
+                "active_sprint": sprint_record.model_dump() if sprint_record else None,
                 "gsd": {
                     "attempted": gsd_attempted,
                     "command": gsd_command,
                     "ok": gsd_ok if gsd_attempted else None,
                     "returncode": gsd_returncode,
                 },
+            },
+        )
+
+    def close(self) -> OperationResult:
+        """Mark the active sprint as completed and archive it to sprints.yaml."""
+        current = self._load_current_sprint()
+        if not current:
+            return OperationResult(
+                command="sprint close",
+                status="warning",
+                messages=[Message(severity="warning", text="No active sprint to close.")],
+                data={"closed": False},
+            )
+
+        closed_at = utc_now_iso()
+        entry = SprintHistoryEntry(
+            id=current.id,
+            name=current.name,
+            status="completed",
+            started_at=current.started_at,
+            closed_at=closed_at,
+        )
+        self._append_sprint_history(entry)
+
+        # Remove current_sprint.yaml (no longer active)
+        if self.current_sprint_path.exists():
+            self.current_sprint_path.unlink()
+
+        return OperationResult(
+            command="sprint close",
+            status="ok",
+            messages=[
+                Message(severity="pass", text=f"Sprint '{current.name}' closed."),
+                Message(severity="info", text=f"Archived to: {self.sprints_history_path}"),
+            ],
+            data={
+                "closed": True,
+                "sprint": entry.model_dump(),
             },
         )
 
