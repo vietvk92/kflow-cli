@@ -19,8 +19,6 @@ KFlow is moving toward a detect-first planning model for adoption in active repo
 - attach to existing planning systems instead of forcing a mirror or rename workflow
 - keep `.kflow` focused on runtime state, task state, and execution evidence
 
-Proposal: [`docs/detect-first-planning-proposal.md`](docs/detect-first-planning-proposal.md)
-
 ## Install
 Preferred target runtime is Python 3.10+.
 
