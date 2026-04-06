@@ -1,0 +1,12 @@
+id: kudo-65-improve-permission-logic
+name: KUDO-65 improve permission logic
+type: bug
+status: created
+risk_level: medium
+created_at: '2026-04-04T18:39:58+00:00'
+updated_at: '2026-04-04T18:39:58+00:00'
+tags:
+- permissions
+- settings
+task_dir: /Users/macbook/Projects/VietVK/KFLOW/.kflow/tasks/kudo-65-improve-permission-logic
+phase_ref: null

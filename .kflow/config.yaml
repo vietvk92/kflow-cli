@@ -1,0 +1,36 @@
+version: 1
+project_name: KFLOW
+project_type: generic
+repo_root: /Users/macbook/Projects/VietVK/KFLOW
+workflow_file: WORKFLOW_v2_PRO.md
+paths:
+  tasks_dir: .kflow/tasks
+  artifacts_dir: .kflow/artifacts
+  planning_dir: .planning
+defaults:
+  simulator: iPhone 16 Pro
+  output_format: text
+policy:
+  source: file
+  file: WORKFLOW_v2_PRO.md
+  fallback_to_embedded: true
+adapters:
+  gsd:
+    enabled: true
+    planning_dir: .planning
+  gitnexus:
+    enabled: true
+    command: gitnexus
+  build:
+    enabled: true
+    command: null
+  test:
+    enabled: false
+    command: null
+  mobile_verify:
+    enabled: false
+    command: ./.tools/verify-mobile.sh
+output:
+  color: true
+  json: false
+  verbose: false
