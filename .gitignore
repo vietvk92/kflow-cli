@@ -1,1 +1,26 @@
 docs/
+
+# Python bytecode
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Distribution / packaging
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Tools
+.mypy_cache/
+.ruff_cache/

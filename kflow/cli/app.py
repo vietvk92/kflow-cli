@@ -3,6 +3,7 @@
 from kflow.cli.analyze_cmd import analyze
 from kflow.cli.build_cmd import build
 from kflow.cli.inspect_cmd import inspect
+from kflow.cli.intake_cmd import intake
 from kflow.cli.plan_cmd import plan
 from typer import Typer
 
@@ -20,6 +21,7 @@ from kflow.cli.verify_cmd import app as verify_app
 app = Typer(help="KFlow workflow enforcement CLI.")
 app.command()(init)
 app.command()(analyze)
+app.command()(intake)
 app.command()(plan)
 app.command()(build)
 app.command()(inspect)

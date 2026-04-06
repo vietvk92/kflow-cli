@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python:*)",
+      "Bash(python3:*)",
+      "Bash(kflow intake:*)",
+      "Bash(/opt/homebrew/opt/python@3.11/bin/pip3.11 install:*)",
+      "Read(//private/tmp/**)",
+      "Bash(mkdir -p test-kflow-project/specs)",
+      "Bash(kflow init:*)"
+    ]
+  }
+}

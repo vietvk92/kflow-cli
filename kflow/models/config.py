@@ -20,6 +20,7 @@ class PathsConfig(BaseModel):
     tasks_dir: str = ".kflow/tasks"
     artifacts_dir: str = ".kflow/artifacts"
     planning_dir: str = ".planning"
+    intake_dir: str = "specs"
 
 
 class DefaultsConfig(BaseModel):
